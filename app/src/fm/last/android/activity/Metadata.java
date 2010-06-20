@@ -338,7 +338,7 @@ public class Metadata extends Activity {
 						+ "<div style='padding:17px; margin:0; top:0px; left:0px; position:absolute;'>" + "<img src='" + imageURL
 						+ "' style='margin-top: 4px; float: left; margin-right: 0px; margin-bottom: 14px; width:64px; border:1px solid gray; padding: 1px;'/>"
 						+ "<div style='margin-left:84px; margin-top:3px'>" + "<span style='font-size: 15pt; font-weight:bold; padding:0px; margin:0px;'>"
-						+ mArtistName + "</span><br/>" + "<span style='color:gray; font-weight: normal; font-size: 10pt;'>" + listeners + " "
+						+ artist.getName() + "</span><br/>" + "<span style='color:gray; font-weight: normal; font-size: 10pt;'>" + listeners + " "
 						+ getString(R.string.metadata_listeners) + "<br/>" + plays + " " + getString(R.string.metadata_plays) + "</span>"
 						+ "<br/> <a style='"+ stationbuttonmediumstyle + "' href='lastfm://artist/" + Uri.encode(artist.getName()) + "'>"
 						+ "<span style='" + stationbuttonspanstyle + "'>" + getString(R.string.metadata_play_button,artist.getName())+"</span></a></div>"
