@@ -20,12 +20,7 @@
  ***************************************************************************/
 package fm.last.android.scrobbler;
 
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.FileHandler;
@@ -57,6 +52,7 @@ import fm.last.android.LastFMApplication;
 import fm.last.android.LastFm;
 import fm.last.android.R;
 import fm.last.android.RadioWidgetProvider;
+import fm.last.android.db.ScrobblerQueueDao;
 import fm.last.api.AudioscrobblerService;
 import fm.last.api.LastFmServer;
 import fm.last.api.RadioTrack;
@@ -95,7 +91,6 @@ public class ScrobblerService extends Service {
 	private Lock mScrobblerLock = new ReentrantLock();
 	SubmitTracksTask mSubmissionTask = null;
 	NowPlayingTask mNowPlayingTask = null;
-	ArrayBlockingQueue<ScrobblerQueueEntry> mQueue;
 	ScrobblerQueueEntry mCurrentTrack = null;
 
 	public static final String META_CHANGED = "fm.last.android.metachanged";
@@ -135,50 +130,17 @@ public class ScrobblerService extends Service {
 		}
 
 		try {
-			if (getFileStreamPath("currentTrack.dat").exists()) {
-				FileInputStream fileStream = openFileInput("currentTrack.dat");
-				ObjectInputStream objectStream = new ObjectInputStream(fileStream);
-				Object obj = objectStream.readObject();
-				if (obj != null && obj instanceof ScrobblerQueueEntry) {
-					mCurrentTrack = (ScrobblerQueueEntry) obj;
-					if (mCurrentTrack.startTime > System.currentTimeMillis()) {
-						mCurrentTrack = null;
-						logger.info("Serialized start time is in the future! ignoring");
-					}
+			ScrobblerQueueEntry entry = ScrobblerQueueDao.getInstance().loadCurrentTrack();
+			if (entry != null) {
+				if (entry.startTime > System.currentTimeMillis()) {
+					logger.info("Serialized start time is in the future! ignoring");
 				}
-				objectStream.close();
-				fileStream.close();
+				else {
+					mCurrentTrack = entry;
+				}
 			}
 		} catch (Exception e) {
 			mCurrentTrack = null;
-		}
-
-		mQueue = new ArrayBlockingQueue<ScrobblerQueueEntry>(1000);
-
-		try {
-			if (getFileStreamPath("queue.dat").exists()) {
-				FileInputStream fileStream = openFileInput("queue.dat");
-				ObjectInputStream objectStream = new ObjectInputStream(fileStream);
-				Object obj = objectStream.readObject();
-				if (obj instanceof Integer) {
-					Integer count = (Integer) obj;
-					for (int i = 0; i < count.intValue(); i++) {
-						obj = objectStream.readObject();
-						if (obj != null && obj instanceof ScrobblerQueueEntry) {
-							try {
-								mQueue.add((ScrobblerQueueEntry) obj);
-							} catch (IllegalStateException e) {
-								break; //The queue is full!
-							}
-						}
-					}
-				}
-				objectStream.close();
-				fileStream.close();
-				logger.info("Loaded " + mQueue.size() + " queued tracks");
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
 		}
 	}
 
@@ -191,46 +153,14 @@ public class ScrobblerService extends Service {
 			PendingIntent alarmIntent = PendingIntent.getBroadcast(this, 0, intent, 0);
 			AlarmManager am = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
 			am.cancel(alarmIntent); // cancel any pending alarm intents
-			if (mQueue.size() > 0) {
+			if (ScrobblerQueueDao.getInstance().getQueueSize() > 0) {
 				// schedule an alarm to wake the device and try again in an hour
 				logger.info("Scrobbles are pending, will retry in an hour");
 				am.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 3600000, alarmIntent);
 			}
-			if (getFileStreamPath("currentTrack.dat").exists())
-				deleteFile("currentTrack.dat");
-			if (mCurrentTrack != null) {
-				FileOutputStream filestream = openFileOutput("currentTrack.dat", 0);
-				ObjectOutputStream objectstream = new ObjectOutputStream(filestream);
-				objectstream.writeObject(mCurrentTrack);
-				objectstream.close();
-				filestream.close();
-			}
+			ScrobblerQueueDao.getInstance().saveCurrentTrack(mCurrentTrack);
 		} catch (Exception e) {
-			if (getFileStreamPath("currentTrack.dat").exists())
-				deleteFile("currentTrack.dat");
 			logger.severe("Unable to save current track state");
-			e.printStackTrace();
-		}
-
-		try {
-			if (getFileStreamPath("queue.dat").exists())
-				deleteFile("queue.dat");
-			if (mQueue.size() > 0) {
-				logger.info("Writing " + mQueue.size() + " queued tracks");
-				FileOutputStream filestream = openFileOutput("queue.dat", 0);
-				ObjectOutputStream objectstream = new ObjectOutputStream(filestream);
-				objectstream.writeObject(new Integer(mQueue.size()));
-				while (mQueue.size() > 0) {
-					ScrobblerQueueEntry e = mQueue.take();
-					objectstream.writeObject(e);
-				}
-				objectstream.close();
-				filestream.close();
-			}
-		} catch (Exception e) {
-			if (getFileStreamPath("queue.dat").exists())
-				deleteFile("queue.dat");
-			logger.severe("Unable to save queue state");
 			e.printStackTrace();
 		}
 	}
@@ -254,10 +184,9 @@ public class ScrobblerService extends Service {
 			}
 			if (played || mCurrentTrack.rating.length() > 0) {
 				logger.info("Enqueuing track (Rating:" + mCurrentTrack.rating + ")");
-				try {
-				mQueue.add(mCurrentTrack);
-				} catch (IllegalStateException e) {
-					logger.severe("Scrobble queue is full!  Have " + mQueue.size() + " scrobbles!");
+				boolean queued = ScrobblerQueueDao.getInstance().addToQueue(mCurrentTrack);
+				if (!queued) {			
+					logger.severe("Scrobble queue is full!  Have " + ScrobblerQueueDao.MAX_QUEUE_SIZE + " scrobbles!");
 				}
 			}
 			mCurrentTrack = null;
@@ -525,13 +454,14 @@ public class ScrobblerService extends Service {
 			mCurrentTrack.rating = "B";
 			Toast.makeText(this, getString(R.string.scrobbler_trackbanned), Toast.LENGTH_SHORT).show();
 		}
-		if (intent.getAction().equals("fm.last.android.scrobbler.FLUSH") || (mQueue != null && mQueue.size() > 0 && mSubmissionTask == null && mNowPlayingTask == null)) {
+		if (intent.getAction().equals("fm.last.android.scrobbler.FLUSH") || mNowPlayingTask == null) {
 			ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
 			NetworkInfo ni = cm.getActiveNetworkInfo();
 			if(ni != null) {
 				boolean scrobbleWifiOnly = PreferenceManager.getDefaultSharedPreferences(this).getBoolean("scrobble_wifi_only", false);
 				if (cm.getBackgroundDataSetting() && (!scrobbleWifiOnly || (scrobbleWifiOnly && ni.getType() == ConnectivityManager.TYPE_WIFI))) {
-					if (mQueue != null && mQueue.size() > 0 && mSubmissionTask == null) {
+					int queueSize = ScrobblerQueueDao.getInstance().getQueueSize();
+					if (queueSize > 0 && mSubmissionTask == null) {
 						mSubmissionTask = new SubmitTracksTask();
 						mSubmissionTask.execute(mScrobbler);
 					}
@@ -565,7 +495,7 @@ public class ScrobblerService extends Service {
 		@Override
 		public void onPreExecute() {
 			/* If we have any scrobbles in the queue, try to send them now */
-			if (mSubmissionTask == null && mQueue.size() > 0) {
+			if (mSubmissionTask == null && ScrobblerQueueDao.getInstance().getQueueSize() > 0) {
 				mSubmissionTask = new SubmitTracksTask();
 				mSubmissionTask.execute(mScrobbler);
 			}
@@ -616,12 +546,13 @@ public class ScrobblerService extends Service {
 		public Boolean doInBackground(AudioscrobblerService... scrobbler) {
 			boolean success = false;
 			mScrobblerLock.lock();
-			logger.info("Going to submit " + mQueue.size() + " tracks");
+			logger.info("Going to submit " + ScrobblerQueueDao.getInstance().getQueueSize() + " tracks");
 			LastFmServer server = AndroidLastFmServerFactory.getServer();
-			while (mQueue.size() > 0) {
+			
+			ScrobblerQueueEntry e = null;
+			while ((e = ScrobblerQueueDao.getInstance().nextQueueEntry()) != null) {
 				try {
 					success = false;
-					ScrobblerQueueEntry e = mQueue.peek();
 					if (e != null && e.title != null && e.artist != null && e.toRadioTrack() != null) {
 						if (e.rating.equals("L")) {
 							server.loveTrack(e.artist, e.title, mSession.getKey());
@@ -645,20 +576,16 @@ public class ScrobblerService extends Service {
 							}
 						}
 					}
-				} catch (NullPointerException e) { //Skip to the next track if we get an NPE
-					success = true;
-				} catch (Exception e) {
-					logger.severe("Unable to submit track: " + e.toString());
-					e.printStackTrace();
+				} 
+				catch (Exception ex) {
+					logger.severe("Unable to submit track: " + ex.toString());
+					ex.printStackTrace();
 					success = false;
 				}
 				if(success) {
-					try {
-						mQueue.take();
-					} catch (InterruptedException e1) {
-						e1.printStackTrace();
-					}
-				} else {
+					ScrobblerQueueDao.getInstance().removeFromQueue(e);
+				} 
+				else {
 					logger.severe("Scrobble submission aborted");
 					break;
 				}

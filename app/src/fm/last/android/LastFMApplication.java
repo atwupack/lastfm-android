@@ -20,12 +20,8 @@
  ***************************************************************************/
 package fm.last.android;
 
-import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 import java.util.Locale;
 
 import android.app.AlertDialog;
@@ -39,8 +35,6 @@ import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager.NameNotFoundException;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Build;
@@ -52,13 +46,12 @@ import android.util.Log;
 import com.google.android.apps.analytics.GoogleAnalyticsTracker;
 
 import fm.last.android.activity.Player;
+import fm.last.android.db.LastFmDbHelper;
 import fm.last.android.player.IRadioPlayer;
 import fm.last.android.player.RadioPlayerService;
 import fm.last.android.sync.AccountAuthenticatorService;
 import fm.last.api.AudioscrobblerService;
-import fm.last.api.LastFmServer;
 import fm.last.api.Session;
-import fm.last.api.Station;
 import fm.last.api.WSError;
 import fm.last.util.UrlUtil;
 
@@ -203,96 +196,6 @@ public class LastFMApplication extends Application {
 		}
 	}
 
-	public Station[] getRecentStations() {
-		SQLiteDatabase db = null;
-		try {
-			db = this.openOrCreateDatabase(LastFm.DB_NAME, MODE_PRIVATE, null);
-			Cursor c = db.rawQuery("SELECT * FROM " + LastFm.DB_TABLE_RECENTSTATIONS + " ORDER BY Timestamp DESC LIMIT 10", null);
-			int urlColumn = c.getColumnIndex("Url");
-			int nameColumn = c.getColumnIndex("Name");
-			Station[] stations = new Station[c.getCount()];
-			if (c.getCount() > 0) {
-				c.moveToFirst();
-				int i = 0;
-				// Loop through all Results
-				do {
-					String name = c.getString(nameColumn);
-					String url = c.getString(urlColumn);
-					stations[i] = new Station(name, "", url, "");
-					i++;
-				} while (c.moveToNext());
-			}
-			c.close();
-			db.close();
-			return stations;
-		} catch (Exception e) {
-			System.out.println(e.getMessage());
-		}
-		return null;
-	}
-
-	public Station getLastStation() {
-		SQLiteDatabase db = null;
-		Station result = null;
-		try {
-			db = this.openOrCreateDatabase(LastFm.DB_NAME, MODE_PRIVATE, null);
-			Cursor c = db.rawQuery("SELECT * FROM " + LastFm.DB_TABLE_RECENTSTATIONS + " ORDER BY Timestamp DESC LIMIT 4", null);
-			int urlColumn = c.getColumnIndex("Url");
-			int nameColumn = c.getColumnIndex("Name");
-			if (c.getCount() > 0) {
-				c.moveToFirst();
-				String name = c.getString(nameColumn);
-				String url = c.getString(urlColumn);
-				result = new Station(name, "", url, "");
-			}
-			c.close();
-			db.close();
-		} catch (Exception e) {
-			System.out.println(e.getMessage());
-		}
-		return result;
-	}
-
-	public void appendRecentStation(String url, String name) {
-
-		SQLiteDatabase db = null;
-		try {
-			db = this.openOrCreateDatabase(LastFm.DB_NAME, MODE_PRIVATE, null);
-			db.execSQL("CREATE TABLE IF NOT EXISTS " + LastFm.DB_TABLE_RECENTSTATIONS
-					+ " (Url VARCHAR UNIQUE NOT NULL PRIMARY KEY, Name VARCHAR NOT NULL, Timestamp INTEGER NOT NULL);");
-			db.execSQL("DELETE FROM " + LastFm.DB_TABLE_RECENTSTATIONS + " WHERE Url = \"" + url + "\"");
-			db.execSQL("INSERT INTO " + LastFm.DB_TABLE_RECENTSTATIONS + "(Url, Name, Timestamp) " + "VALUES (\"" + url + "\", \"" + name + "\", "
-					+ System.currentTimeMillis() + ")");
-			db.close();
-		} catch (Exception e) {
-			System.out.println(e.getMessage());
-		}
-	}
-
-	public void fetchRecentStations() {
-		LastFmServer server = AndroidLastFmServerFactory.getServer();
-
-		// Is it worth it?
-		if (session != null) {
-			try {
-				// Let me work it
-				Station stations[] = server.getUserRecentStations(session.getName(), session.getKey());
-				if (stations != null && stations.length > 0) {
-					// I put my thing down, flip it, and reverse it
-					List<Station> list = Arrays.asList(stations);
-					Collections.reverse(list);
-					stations = (Station[]) list.toArray();
-					this.deleteDatabase(LastFm.DB_NAME);
-					for (Station station : stations) {
-						appendRecentStation(station.getUrl(), station.getName());
-					}
-				}
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-	}
 
 	@Override
 	public void onTerminate() {
@@ -414,9 +317,7 @@ public class LastFMApplication extends Application {
 				public void onServiceDisconnected(ComponentName comp) {
 				}
 			}, 0);
-			deleteDatabase(LastFm.DB_NAME);
-			deleteFile("currentTrack.dat");
-			deleteFile("queue.dat");
+			LastFmDbHelper.getInstance().clearDatabase();
 			if(Integer.decode(Build.VERSION.SDK) >= 6) {
 				AccountAuthenticatorService.removeLastfmAccount(this);
 			}
