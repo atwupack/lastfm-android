@@ -169,6 +169,7 @@
     <string name="metadata_nofans">Keine Top-Hörer</string>
     <string name="metadata_plays">mal gespielt</string>
     <string name="metadata_listeners">Zuhörer</string>
+    <string name="metadata_play_button">Spiele %s Radio</string>
 	
 	<!-- NewStation activity -->
     <string name="newstation_label">Last.fm: Starte eine neue Station</string>

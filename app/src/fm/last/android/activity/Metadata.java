@@ -341,7 +341,7 @@ public class Metadata extends Activity {
 						+ mArtistName + "</span><br/>" + "<span style='color:gray; font-weight: normal; font-size: 10pt;'>" + listeners + " "
 						+ getString(R.string.metadata_listeners) + "<br/>" + plays + " " + getString(R.string.metadata_plays) + "</span>"
 						+ "<br/> <a style='"+ stationbuttonmediumstyle + "' href='lastfm://artist/" + Uri.encode(artist.getName()) + "'>"
-						+ "<span style='" + stationbuttonspanstyle + "'>Play " + artist.getName() + " Radio</span></a></div>"
+						+ "<span style='" + stationbuttonspanstyle + "'>" + getString(R.string.metadata_play_button,artist.getName())+"</span></a></div>"
 						+ "<br style='clear:both;'/>" + formatBio(artist.getBio().getContent()) + "</div></body></html>";
 
 				FileOutputStream o = new FileOutputStream("/sdcard/bio.html");
