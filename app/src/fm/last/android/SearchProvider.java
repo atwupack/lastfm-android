@@ -8,7 +8,6 @@ import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.net.Uri;
 import android.text.TextUtils;
-import android.util.Log;
 
 import java.io.IOException;
 
@@ -109,7 +108,7 @@ public class SearchProvider extends ContentProvider {
 		                    id++,                  // _id
 		                    artists[i].getName(),           // text1
 		                    LastFMApplication.getInstance().getString(R.string.action_viewinfo),     // text2
-		                    Uri.parse("http://www.last.fm/music/"+processedQuery),           // intent_data (included when clicking on item)
+		                    createHttpUri(artists[i].getUrl()),        // intent_data (included when clicking on item)
 		                    -1,
 		                    artists[i].getImages().length == 0 ? "" : artists[i].getImages()[0].getUrl()
 		            });
@@ -126,7 +125,7 @@ public class SearchProvider extends ContentProvider {
 		                    id++,                  // _id
 		                    tracks[i].getArtist().getName() + " - " + tracks[i].getName(),           // text1
 		                    LastFMApplication.getInstance().getString(R.string.action_viewinfo),     // text2
-		                    Uri.parse("http://www.last.fm/music/"+Uri.encode(tracks[i].getArtist().getName())+"/_/"+processedQuery),           // intent_data (included when clicking on item)
+		                    createHttpUri(tracks[i].getUrl()),  // intent_data (included when clicking on item)
 		                    -1,
 		                    tracks[i].getImages().length == 0 ? "" : tracks[i].getImages()[0].getUrl()
 		            });
@@ -160,7 +159,7 @@ public class SearchProvider extends ContentProvider {
 		                    id++,                  // _id
 		                    processedQuery,           // text1
 		                    LastFMApplication.getInstance().getString(R.string.action_viewprofile),     // text2
-		                    Uri.parse("http://www.last.fm/user/"+processedQuery),           // intent_data (included when clicking on item)
+		                    createHttpUri(u.getUrl()),           // intent_data (included when clicking on item)
 		                    -1,
 		                    u.getImages().length == 0 ? "" : u.getImages()[0].getUrl()
 		            });
@@ -174,6 +173,18 @@ public class SearchProvider extends ContentProvider {
 			e.printStackTrace();
 			return null;
 		}
+    }
+        
+    private Uri createHttpUri(String url)
+    {
+    	if (url==null) {
+    		throw new IllegalArgumentException("No URL given");
+    	}
+    	// fix for artists' URLs w/o protocol
+    	if (!url.toLowerCase().startsWith("http://")) {
+    		url = "http://"+url;
+    	}
+    	return Uri.parse(url);
     }
 
     /**
