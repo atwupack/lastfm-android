@@ -255,6 +255,7 @@
 	<string name="ERROR_SIGNUP_TITLE">Registrierung fehlgeschlagen</string>
 	<string name="ERROR_AMAZON">Amazon MP3-Downloads stehen auf diesem Gerät nicht zur Verfügung.</string>
     <string name="ERROR_AMAZON_TITLE">Amazon nicht verfügbar</string>
+    <string name="ERROR_RADIO_UNAVAILABLE">Last.fm Radio steht in dieser Region nicht zur Verfügung.</string>
     
     <!-- third party account access -->
     <string name="account_access_title">Zugriff Last.fm-Konto</string>
