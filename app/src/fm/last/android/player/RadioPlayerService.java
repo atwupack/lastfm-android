@@ -42,6 +42,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.content.pm.PackageManager;
 import android.database.sqlite.SQLiteException;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
@@ -61,6 +62,7 @@ import android.os.RemoteException;
 import android.preference.PreferenceManager;
 import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
+import android.util.Log;
 import fm.last.android.AndroidLastFmServerFactory;
 import fm.last.android.LastFMApplication;
 import fm.last.android.LastFMMediaButtonHandler;
@@ -131,6 +133,17 @@ public class RadioPlayerService extends Service implements MusicFocusable {
     private final float DUCK_VOLUME = 0.1f;
     private MusicPlayerFocusHelper mFocusHelper;
 
+	public static boolean radioAvailable(Context context) {
+		TelephonyManager tm = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+		if (tm == null || tm.getNetworkCountryIso() == null|| tm.getNetworkCountryIso().length() == 0 || tm.getNetworkCountryIso().equals("us") || tm.getNetworkCountryIso().equals("uk") || tm.getNetworkCountryIso().equals("de")) {
+			context.getPackageManager().setComponentEnabledSetting(new ComponentName("fm.last.android", "fm.last.android.activity.Player"), PackageManager.COMPONENT_ENABLED_STATE_DEFAULT, PackageManager.DONT_KILL_APP);
+			return true;
+		}
+		Log.i("Last.fm", "Radio is unavailable in this region: " + tm.getNetworkCountryIso());
+		context.getPackageManager().setComponentEnabledSetting(new ComponentName("fm.last.android", "fm.last.android.activity.Player"), PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP);
+		return false;
+	}
+    
 	@Override
 	public void onCreate() {
 		super.onCreate();
@@ -848,6 +861,10 @@ public class RadioPlayerService extends Service implements MusicFocusable {
 	}
 
 	private void tune(String url, Session session) throws Exception, WSError {
+		if(!radioAvailable(this)) {
+			throw new WSError("radio.tune", "Last.fm radio is unavailable in this region", WSError.ERROR_RadioUnavailable);
+		}
+		
 		wakeLock.acquire();
 		wifiLock.acquire();
 

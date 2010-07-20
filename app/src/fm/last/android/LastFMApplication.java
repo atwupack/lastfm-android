@@ -193,6 +193,10 @@ public class LastFMApplication extends Application {
 				};
 				registerReceiver(statusListener, intentFilter);
 			}
+		} else {
+			Intent i = new Intent(mCtx, LastFm.class);
+			i.putExtra("station", url);
+			mCtx.startActivity(i);
 		}
 	}
 
@@ -230,6 +234,10 @@ public class LastFMApplication extends Application {
 	
 				case WSError.ERROR_NotEnoughNeighbours:
 					description = R.string.ERROR_INSUFFICIENT_NEIGHBOURS;
+					break;
+					
+				case WSError.ERROR_RadioUnavailable:
+					description = R.string.ERROR_RADIO_UNAVAILABLE;
 					break;
 				}
 			}
