@@ -96,6 +96,8 @@ public interface LastFmServer {
 	 */
 	public Tag[] getTrackTopTags(String artist, String track, String mbid) throws IOException;
 
+	public Tag[] getArtistTopTags(String artist, String mbid) throws IOException;
+
 	/**
 	 * See http://www.lastfm.pl/api/show?service=123
 	 * 
@@ -116,6 +118,8 @@ public interface LastFmServer {
 	 * @throws IOException
 	 */
 	public Artist[] getUserTopArtists(String user, String period) throws IOException;
+
+	public Artist[] getUserRecommendedArtists(String user, String period) throws IOException;
 
 	/**
 	 * See http://www.lastfm.pl/api/show?service=299
@@ -207,10 +211,12 @@ public interface LastFmServer {
 	 * @param lang
 	 *            (Optional) : The language to return the biography in,
 	 *            expressed as an ISO 639 alpha-2 code.
+	 * @param username (Optional) : The username for the context of the request. 
+	 * 				If supplied, the user's playcount for this artist is included in the response.
 	 * @return Artist instance
 	 * @throws IOException
 	 */
-	public Artist getArtistInfo(String artist, String mbid, String lang) throws IOException;
+	public Artist getArtistInfo(String artist, String mbid, String lang, String username) throws IOException;
 
 	/**
 	 * See http://www.lastfm.pl/api/show?service=312
@@ -225,6 +231,8 @@ public interface LastFmServer {
 	 * @throws IOException
 	 */
 	public User[] getTrackTopFans(String track, String artist, String mbid) throws IOException;
+
+	public User[] getArtistTopFans(String artist, String mbid) throws IOException;
 
 	/**
 	 * See http://www.lastfm.pl/api/show?service=117
@@ -333,6 +341,8 @@ public interface LastFmServer {
 	public void banTrack(String artist, String track, String sk) throws IOException;
 
 	public void shareTrack(String artist, String track, String recipient, String sk) throws IOException;
+
+	public void shareArtist(String artist, String recipient, String sk) throws IOException;
 
 	public void addTrackToPlaylist(String artist, String track, String playlistId, String sk) throws IOException;
 

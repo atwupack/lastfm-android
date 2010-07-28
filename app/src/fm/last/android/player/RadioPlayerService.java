@@ -113,6 +113,7 @@ public class RadioPlayerService extends Service implements MusicFocusable {
 	private long mStationStartTime = 0;
 	private long mTrackStartTime = 0;
 	private PendingIntent mPreBufferIntent = null;
+	private boolean pauseButtonPressed = false;
 
 	private static final int NOTIFY_ID = 1337;
 
@@ -463,7 +464,7 @@ public class RadioPlayerService extends Service implements MusicFocusable {
 		public void onBufferingUpdate(MediaPlayer p, int percent) {
 			if (p == mp) {
 				bufferPercent = percent;
-				if (mPreBufferIntent == null && percent == 100) {
+				if (mPreBufferIntent == null && percent == 100 && PreferenceManager.getDefaultSharedPreferences(RadioPlayerService.this).getBoolean("prebuffer", true)) {
 					Intent intent = new Intent("fm.last.android.player.PREBUFFER");
 					mPreBufferIntent = PendingIntent.getBroadcast(RadioPlayerService.this, 0, intent, 0);
 					AlarmManager am = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
@@ -648,6 +649,8 @@ public class RadioPlayerService extends Service implements MusicFocusable {
 	}
 
 	private void nextSong() {
+		pauseButtonPressed = false;
+		
 		if (mState == STATE_SKIPPING || mState == STATE_STOPPED || mState == STATE_NODATA) {
 			logger.severe("nextSong() called in wrong state: " + mState);
 			return;
@@ -727,7 +730,7 @@ public class RadioPlayerService extends Service implements MusicFocusable {
 	}
 
 	private void pause() {
-		if (mState == STATE_STOPPED || mState == STATE_NODATA || mState == STATE_ERROR)
+		if (mState == STATE_STOPPED || mState == STATE_NODATA || mState == STATE_ERROR || currentStation == null)
 			return;
 
 		// TODO: This should not be exposed in the UI, only used to pause
@@ -1052,6 +1055,14 @@ public class RadioPlayerService extends Service implements MusicFocusable {
 	}
 
 	private final IRadioPlayer.Stub mBinder = new IRadioPlayer.Stub() {
+		public boolean getPauseButtonPressed() throws DeadObjectException {
+			return pauseButtonPressed;
+		}
+		
+		public void pauseButtonPressed() throws DeadObjectException {
+			pauseButtonPressed = true;
+		}
+		
 		public int getState() throws DeadObjectException {
 			return mState;
 		}
@@ -1099,7 +1110,7 @@ public class RadioPlayerService extends Service implements MusicFocusable {
 			logger.info("Skip button pressed");
 			if (Looper.myLooper() == null)
 				Looper.prepare();
-
+			
 			new NextTrackTask().execute((Void) null);
 		}
 

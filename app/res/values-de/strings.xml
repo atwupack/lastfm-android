@@ -103,7 +103,8 @@
     <string name="prefs_sync_website_summary">Zeige die Last.fm-Profil URLs deiner Kontakte an</string>	
 	<string name="prefs_headset_controls_title">Headset-Steuerung</string>
     <string name="prefs_headset_controls_summary">Aktiviere Steuerung der Wiedergabe durch Headset-Tasten</string>
-	
+	<string name="prefs_prebuffer_title">Nächsten Titel puffern</string>
+    <string name="prefs_prebuffer_summary">Lade den nächsten Titel während das aktuelle Lied abgespielt wird</string>
 	
 	<!-- bugreport -->
 	<string name="bugreport_description">Bitte beschreibe den Fehler:</string>
@@ -177,6 +178,7 @@
     <string name="metadata_plays">mal gespielt</string>
     <string name="metadata_listeners">Zuhörer</string>
     <string name="metadata_play_button">Spiele %s Radio</string>
+    <string name="metadata_userplays">gespielte Titel in deiner Musiksammlung</string>
 	
 	<!-- NewStation activity -->
     <string name="newstation_search">Suchen</string>

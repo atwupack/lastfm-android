@@ -229,6 +229,17 @@ final class LastFmServerImpl implements LastFmServer {
 		return TrackFunctions.getTrackTopTags(baseUrl, params);
 	}
 
+	public Tag[] getArtistTopTags(String artist, String mbid) throws IOException, WSError {
+		Map<String, String> params = createParams("artist.getTopTags");
+		if (artist != null) {
+			params.put("artist", artist);
+		}
+		if (mbid != null) {
+			params.put("mbid", mbid);
+		}
+		return TrackFunctions.getTrackTopTags(baseUrl, params);
+	}
+
 	public Tag[] getUserTopTags(String user, Integer limit) throws IOException, WSError {
 		Map<String, String> params = createParams("user.getTopTags");
 		if (user != null) {
@@ -291,7 +302,7 @@ final class LastFmServerImpl implements LastFmServer {
 		TrackFunctions.removeTrackTag(baseUrl, params);
 	}
 
-	public Artist getArtistInfo(String artist, String mbid, String lang) throws IOException, WSError {
+	public Artist getArtistInfo(String artist, String mbid, String lang, String username) throws IOException, WSError {
 		Map<String, String> params = createParams("artist.getInfo");
 		if (artist != null) {
 			params.put("artist", artist);
@@ -302,6 +313,9 @@ final class LastFmServerImpl implements LastFmServer {
 		if (lang != null) {
 			params.put("lang", lang);
 		}
+		if (username != null) {
+			params.put("username", username);
+		}
 		return ArtistFunctions.getArtistInfo(baseUrl, params);
 	}
 
@@ -310,6 +324,17 @@ final class LastFmServerImpl implements LastFmServer {
 		if (track != null) {
 			params.put("track", track);
 		}
+		if (artist != null) {
+			params.put("artist", artist);
+		}
+		if (mbid != null) {
+			params.put("mbid", mbid);
+		}
+		return TrackFunctions.getTrackTopFans(baseUrl, params);
+	}
+
+	public User[] getArtistTopFans(String artist, String mbid) throws IOException, WSError {
+		Map<String, String> params = createParams("artist.getTopFans");
 		if (artist != null) {
 			params.put("artist", artist);
 		}
@@ -369,6 +394,16 @@ final class LastFmServerImpl implements LastFmServer {
 			params.put("period", period);
 		}
 		return UserFunctions.getUserTopArtists(baseUrl, params);
+	}
+
+	public Artist[] getUserRecommendedArtists(String user, String sk) throws IOException {
+		Map<String, String> params = createParams("user.getRecommendedArtists");
+		if (user != null) {
+			params.put("user", user);
+		}
+		params.put("sk", sk);
+		signParams(params);
+		return UserFunctions.getUserRecommendedArtists(baseUrl, params);
 	}
 
 	public Album[] getUserTopAlbums(String user, String period) throws IOException {
@@ -483,6 +518,15 @@ final class LastFmServerImpl implements LastFmServer {
 		Map<String, String> params = createParams("track.share");
 		params.put("artist", artist);
 		params.put("track", track);
+		params.put("recipient", recipient);
+		params.put("sk", sk);
+		signParams(params);
+		TrackFunctions.shareTrack(baseUrl, params);
+	}
+
+	public void shareArtist(String artist, String recipient, String sk) throws IOException {
+		Map<String, String> params = createParams("artist.share");
+		params.put("artist", artist);
 		params.put("recipient", recipient);
 		params.put("sk", sk);
 		signParams(params);
